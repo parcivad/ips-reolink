@@ -113,12 +113,7 @@ class ReolinkCamera extends IPSModule {
                     ]
                 ],
                 "values" => [
-                    [
-                        "name" => $this->ReadPropertyString("name"),
-                        "device" => $this->ReadPropertyString( "device"),
-                        "company" => $this->ReadPropertyString( "company"),
-                        "haId" => $this->ReadPropertyString( "haId"),
-                    ],
+                    
                 ],
             ]
         ];
