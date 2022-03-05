@@ -2,10 +2,11 @@
   "id": "{E3AE258C-7476-E4AE-1D9D-86168BE5298E}",
   "author": "parcivad",
   "name": "Reolink",
-  "url": "https://www.parcivad.de",
+  "url": "https://github.com/parcivad/ips-reolink",
   "compatibility": {
     "version": "6.0"
   },
-  "version": "0.1",
-  "build": 0
+  "version": "0.1 alpha",
+  "build": 0,
+  "date": 0
 }
