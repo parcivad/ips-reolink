@@ -1,3 +1,9 @@
 {
-
+  "translations": {
+    "de": {
+      "IP-Address": "IP-Adresse",
+      "Username": "User",
+      "Password": "Passwort"
+    }
+  }
 }
