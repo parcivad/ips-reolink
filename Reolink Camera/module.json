@@ -1,0 +1,11 @@
+{
+  "id": "{5ED3A7D1-3C8F-7E3E-C5F5-8E8446C260F7}",
+  "name": "Reolink Camera",
+  "type": 3,
+  "aliases":
+  [
+    "Reolink Camera"
+  ],
+  "url": "https://www.github.com/parcivad",
+  "prefix": "ReoCam"
+}
