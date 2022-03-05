@@ -1,26 +1,26 @@
 <?php
 
-/***
- * @param string $ip IP of the device itself
- * @param string $token Token that should be used
+/*** Function to make a command call to the device
+ * @param string $ip ip of the device
+ * @param string $token Token of the user
  * @param string $cmd Command that should be executed
  * @param string $action Action type
  * @param array $param requested params
- * @throws ErrorException in case of error return from the api
+ * @return array
+ * @throws ErrorException
  */
-function cmd(string $ip, string $token, string $cmd, string $action, array $param): array {
-
+function cmd(string $ip, string $token, string $cmd, string $action, array $param) : array {
     $header_array = array('Content-Type: application/json');
     // build url
     $url = "http://" . $ip . "/api.cgi?cmd=" . $cmd . "&token=" . $token;
 
     $body = "[".json_encode(
-       [
-           "cmd" => $cmd,
-           "action" => $action,
-           "param" => $param
-       ]
-    )."]";
+            [
+                "cmd" => $cmd,
+                "action" => $action,
+                "param" => $param
+            ]
+        )."]";
 
     // configure curl options in array
     $curlOptions = array(
@@ -28,6 +28,7 @@ function cmd(string $ip, string $token, string $cmd, string $action, array $para
         CURLOPT_HTTPHEADER => $header_array,
         CURLOPT_POST => 1,
         CURLOPT_POSTFIELDS => $body,
+        CURLOPT_TIMEOUT => 10,
         CURLOPT_RETURNTRANSFER => true
     );
 
@@ -40,19 +41,20 @@ function cmd(string $ip, string $token, string $cmd, string $action, array $para
     curl_close($ch);
 
     // check if there is any response
-    if (!isset($response)) throw new ErrorException("Can't reach device with the given IP", 200);
+    if ($response == null) throw new ErrorException("Can't access device on this ip", 200);
 
     $arrayResponse = json_decode($response, true)[0];
 
     // in case of error throw exception otherwise return response
     if (isset($arrayResponse["error"])) {
         // check for login errors
-        if ($arrayResponse["error"]["rspCode"] = -6 || $arrayResponse["error"]["rspCode"]  = -7) {
-            // clear token because it's not valid anymore
-            file_put_contents(dirname(__FILE__) . "/session.json", json_encode( ["token"=> null, "leaseTime"=> null, "timestamp"=> null]));
+        if ($arrayResponse["error"]["rspCode"] == -6 || $arrayResponse["error"]["rspCode"]  == -7) {
+            // reset session to trigger new login
+            throw new ErrorException("session reset needed", 201);
         }
         // other error will be shown via exception
         throw new ErrorException($arrayResponse["error"]["detail"], $arrayResponse["error"]["rspCode"] * -1000);
     }
+
     return $arrayResponse;
 }
