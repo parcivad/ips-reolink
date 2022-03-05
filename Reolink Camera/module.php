@@ -22,3 +22,5 @@ class ReolinkCamera extends IPSModule {
 
 
 }
+
+?>

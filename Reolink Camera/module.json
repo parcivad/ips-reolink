@@ -2,10 +2,14 @@
   "id": "{5ED3A7D1-3C8F-7E3E-C5F5-8E8446C260F7}",
   "name": "Reolink Camera",
   "type": 3,
+  "vendor": "Reolink",
   "aliases":
   [
     "Reolink Camera"
   ],
   "url": "https://github.com/parcivad/ips-reolink",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
   "prefix": "ReoCam"
 }
