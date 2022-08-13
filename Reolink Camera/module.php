@@ -243,10 +243,12 @@ class ReolinkCamera extends IPSModule {
 
     /**
      * Get Device Image Configuration
+     * @param int $channel  Channel of the Device
+     * @return array|null Image Configuration
      */
-    public function GetImageConfiguration() {
+    public function GetImageConfiguration(int $channel): ?array {
         // request command on device
-        $rsp = $this->cmd("GetImage", 0, []);
+        $rsp = $this->cmd("GetImage", 0, ["channel" => $channel]);
         if (!isset($rsp)) return null;
         // if not empty return
         return $rsp["value"];
@@ -256,7 +258,7 @@ class ReolinkCamera extends IPSModule {
      * Set Device Image Configuration
      */
     public function SetImageConfiguration() {
-        
+
     }
 
 
