@@ -272,8 +272,20 @@ class ReolinkCamera extends IPSModule {
     /**
      * Set Device Image Configuration
      */
-    public function SetImageConfiguration() {
-
+    public function SetImageConfiguration(int $channel, int $bright, int $contrast, int $saturation,
+                                          int $hue, int $sharpen) {
+        // request command on device
+        $this->cmd("SetImage", 0,
+            [
+                "Image" => [
+                    "channel" => $channel,
+                    "bright" => $bright,
+                    "contrast" => $contrast,
+                    "saturation" => $saturation,
+                    "hue" => $hue,
+                    "sharpen" => $sharpen
+                ]
+            ]);
     }
 
 
