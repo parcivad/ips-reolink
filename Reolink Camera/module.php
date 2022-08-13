@@ -183,27 +183,34 @@ class ReolinkCamera extends IPSModule {
 
     /**
      * Get Device HDD info
-     * @return string|null device name
+     * @return array|null device name
      */
-    public function GetHDDInfo(): ?string {
+    public function GetHDDInfo(): ?array {
         // request command on device
         $rsp = $this->cmd("GetHddInfo", 0, []);
         if (!isset($rsp)) return null;
         // if not empty return
-        return $rsp["value"]["HddInfo"];
+        return [
+            "capacity" => $rsp["value"]["HddInfo"][0]["capacity"],
+            "remainingCapacity" => $rsp["value"]["HddInfo"][0]["size"],
+            "formatted" => boolval($rsp["value"]["HddInfo"][0]["format"]),
+            "mounted" => boolval($rsp["value"]["HddInfo"][0]["mount"]),
+            "number" => $rsp["value"]["HddInfo"][0]["number"],
+            "storageType" => $rsp["value"]["HddInfo"][0]["storageType"]
+        ];
     }
 
     /**
      * Get Device Name
-     * @return string|null device name
+     * @return array|null device name
      */
-    public function GetOnline(): ?string {
+    public function GetOnline(): ?array {
         // request command on device
         $rsp = $this->cmd("GetOnline", 0, []);
         if (!isset($rsp)) return null;
         // if not empty return
-        foreach ($rsp["value"]["User"] as $user) {
-            $user["canbeDisconn"] = boolval($user["canbeDisconn"]);
+        for ($i=0; $i < count($rsp["value"]["User"]); $i++) {
+            $rsp["value"]["User"][$i]["canbeDisconn"] = boolval($rsp["value"]["User"][$i]["canbeDisconn"]);
         }
         return $rsp["value"]["User"];
     }
@@ -234,8 +241,23 @@ class ReolinkCamera extends IPSModule {
         throw new ErrorException("Couldn't find a user with the name ". $userName);
     }
 
+    /**
+     * Get Device Image Configuration
+     */
+    public function GetImageConfiguration() {
+        // request command on device
+        $rsp = $this->cmd("GetImage", 0, []);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        return $rsp["value"];
+    }
 
-
+    /**
+     * Set Device Image Configuration
+     */
+    public function SetImageConfiguration() {
+        
+    }
 
 
 
