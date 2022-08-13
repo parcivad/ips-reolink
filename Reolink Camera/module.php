@@ -20,8 +20,10 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterPropertyBoolean("log", true);
 
         // save session information as json in string
-        $this->RegisterAttributeString("session",
-            '{"ip": "0.0.0.0","token": null,"leaseTime": null,"timestamp": null}');
+        $this->RegisterAttributeString("usedIP", null);
+        $this->RegisterAttributeString("token", null);
+        $this->RegisterAttributeInteger("leaseTime", null);
+        $this->RegisterAttributeInteger("timestamp", null);
     }
 
     // called on changes
@@ -47,6 +49,14 @@ class ReolinkCamera extends IPSModule {
     }
 
     //============================================================================================== REOLINK FUNCTIONS
+
+    public function GetAbility() {
+        // request command on device
+        $rsp = $this->cmd("GetDevInfo", 0, ["User" => ["userName" => $this->ReadPropertyString("username")]]);
+        if (!isset($rsp)) return [];
+        // if not empty return
+        return $rsp["value"];
+    }
 
     /** Get Device Info
      * @return array|mixed list of device information
@@ -79,6 +89,22 @@ class ReolinkCamera extends IPSModule {
         $this->cmd("SetDevName", 0, ["DevName" => ["name" => $name]]);
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     //============================================================================================== SESSION HANDLER
 
     /*** Function that makes a device call simple by using api curl file
@@ -98,8 +124,12 @@ class ReolinkCamera extends IPSModule {
             return cmd($ip, $token, $cmd, $action, $param);
         } catch (ErrorException $exception) {
             // session reset
-            if ($exception->getCode() == 201) $this->WriteAttributeString("session",
-                '{"ip": "0.0.0.0","token": null,"leaseTime": null,"timestamp": null}');
+            if ($exception->getCode() == 201) {
+                $this->WriteAttributeString("usedIP", null);
+                $this->WriteAttributeString("token", null);
+                $this->WriteAttributeInteger("leaseTime", null);
+                $this->WriteAttributeInteger("timestamp", null);
+            };
             // module status
             $this->SetStatus($exception->getCode());
             return null;
@@ -111,25 +141,24 @@ class ReolinkCamera extends IPSModule {
      * @throws ErrorException
      */
     protected function getToken(): string {
-        // get present data
-        $session = json_decode($this->ReadAttributeString("session"), true);
-        $ip = $this->ReadPropertyString("ip");
-
         // token elapsed
-        if (isset($session["token"]) && time() - $session["timestamp"] < $session["leaseTime"] && $session["ip"] == $ip )
-            return $session["token"];
+        if ($this->ReadAttributeString("token") != null
+            && time() - $this->ReadAttributeInteger("timestamp") < $this->ReadAttributeInteger("leaseTime")
+            && $this->ReadAttributeString("usedIP") == $this->ReadPropertyString("ip") )
+            return $this->ReadAttributeString("token");
 
         $this->_log("trying to refresh/get a new token", KL_NOTIFY);
 
         // try to refresh the token
         try {
             // check device change
-            if (isset($session["ip"]) && $session["ip"] != $ip) {
+            if ($this->ReadAttributeString("usedIP") != null
+                && $this->ReadAttributeString("usedIP") != $this->ReadPropertyString("ip")) {
                 // logout old session
-                $this->userSessionLogout($session["ip"]);
+                $this->userSessionLogout($this->ReadAttributeString("usedIP"));
             } else {
                 // default logout of current ip
-                $this->userSessionLogout($ip);
+                $this->userSessionLogout($this->ReadPropertyString("ip"));
             }
             // wait for the device to logout
             sleep(1);
@@ -137,8 +166,12 @@ class ReolinkCamera extends IPSModule {
             return $this->userSessionLogin();
         } catch (ErrorException $exception) {
             // session reset
-            if ($exception->getCode() == 201) $this->WriteAttributeString("session",
-                '{"ip": "0.0.0.0","token": null,"leaseTime": null,"timestamp": null}');
+            if ($exception->getCode() == 201) {
+                $this->WriteAttributeString("usedIP", "");
+                $this->WriteAttributeString("token", "");
+                $this->WriteAttributeInteger("leaseTime", 0);
+                $this->WriteAttributeInteger("timestamp", 0);
+            };
             // module status
             $this->SetStatus($exception->getCode());
             return "";
@@ -151,23 +184,19 @@ class ReolinkCamera extends IPSModule {
      * @throws ErrorException
      */
     protected function userSessionLogout(string $ip) {
-        // get present data
-        $session = json_decode($this->ReadAttributeString("session"), true);
-
         // check if token that should be logged out is present
-        if (!$session["token"]) return;
+        if ($this->ReadAttributeString("token") == null) return;
 
         // send command to device
-        cmd($ip, $session["token"], "Logout", 0, []);
+        cmd($ip, $this->ReadAttributeString("token"), "Logout", 0, []);
 
         $this->_log("Active user should be logged out", KL_MESSAGE);
 
         // clear and save
-        $session["ip"] = null;
-        $session["token"] = null;
-        $session["leaseTime"] = null;
-        $session["timestamp"] = null;
-        $this->WriteAttributeString("session", json_encode($session));
+        $this->WriteAttributeString("usedIP", null);
+        $this->WriteAttributeString("token", null);
+        $this->WriteAttributeInteger("leaseTime", null);
+        $this->WriteAttributeInteger("timestamp", null);
     }
 
     /*** Function to retrieve the
@@ -176,15 +205,10 @@ class ReolinkCamera extends IPSModule {
      * @throws ErrorException
      */
     protected function userSessionLogin() {
-        // get present data
-        $session = json_decode($this->ReadAttributeString("session"), true);
-        $username = $this->ReadPropertyString("username");
-        $password = $this->ReadPropertyString("password");
-
         $param = [
             "User" => [
-                "userName" => $username,
-                "password" => $password
+                "userName" => $this->ReadPropertyString("username"),
+                "password" => $this->ReadPropertyString("password")
             ]
         ];
 
@@ -192,13 +216,12 @@ class ReolinkCamera extends IPSModule {
         $ip = $this->ReadPropertyString("ip");
         $rsp = cmd($ip, "", "Login", 0, $param);
 
-        $session["ip"] = $ip;
-        $session["token"] = $rsp["value"]["Token"]["name"];
-        $session["leaseTime"] = $rsp["value"]["Token"]["leaseTime"];
-        $session["timestamp"] = time();
+        $this->WriteAttributeString("usedIP", $ip);
+        $this->WriteAttributeString("token", $rsp["value"]["Token"]["name"]);
+        $this->WriteAttributeInteger("leaseTime", $rsp["value"]["Token"]["leaseTime"]);
+        $this->WriteAttributeInteger("timestamp", time());
         // save
-        $this->WriteAttributeString("session", json_encode($session));
-        $this->_log("User " . $username . " should be logged in", KL_MESSAGE);
+        $this->_log("User " . $this->ReadPropertyString("username") . " should be logged in", KL_MESSAGE);
         return $rsp["value"]["Token"]["name"];
     }
 
