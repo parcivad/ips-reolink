@@ -106,6 +106,15 @@ class ReolinkCamera extends IPSModule {
 
     /**
      * Set Device Time
+     * @param int $year         Year of the Time
+     * @param int $month        Month of the Time
+     * @param int $day          Day of the Time
+     * @param int $hour         Hour of the Time
+     * @param int $minute       Minute of the Time
+     * @param int $second       Second of the Time
+     * @param string $timeFmt   "MM/DD/YYY", "DD/MM/YYYY"
+     * @param int $timeZone     Seconds of the Timezone difference
+     * @param int $hourFmt      Format 0 for 24 hours, 1 for 12 hours
      */
     public function SetTime(int $year, int $month, int $day, int $hour, int $minute, int $second,
                             string $timeFmt, int $timeZone, int $hourFmt): void {
@@ -147,7 +156,21 @@ class ReolinkCamera extends IPSModule {
     }
 
     /**
-     * Set Device Time Shift
+     * Set Device Time Shift (Zeitverschiebung)
+     * @param bool $enable      Feature enabled on the device
+     * @param int $startWeekday Weekday of the TimeShift start
+     * @param int $startWeek    Week of the TimeShift start
+     * @param int $startMonth   Month of the TimeShift start
+     * @param int $startHour    Hour of the TimeShift start
+     * @param int $startMinute  Minute of the TimeShift start
+     * @param int $startSecond  Second of the TimeShift start
+     * @param int $offset       Time offset
+     * @param int $endWeekday   Weekday of the TimeShift end
+     * @param int $endWeek      Week of the TimeShift end
+     * @param int $endMonth     Month of the TimeShift end
+     * @param int $endHour      Hour of the TimeShift end
+     * @param int $endMinute    Minute of the TimeShift end
+     * @param int $endSecond    Second of the TimeShift end
      */
     public function SetTimeShift(bool $enable, int $startWeekday, int $startWeek, int $startMonth, int $startHour,
                                  int $startMinute, int $startSecond, int $offset, int $endWeekday, int $endWeek,
@@ -271,6 +294,12 @@ class ReolinkCamera extends IPSModule {
 
     /**
      * Set Device Image Configuration
+     * @param int $channel      Channel to configure
+     * @param int $bright       Bright of the Image
+     * @param int $contrast     Contrast of the Image
+     * @param int $saturation   Saturation of the Image
+     * @param int $hue          Hue of the Image
+     * @param int $sharpen      Sharpen of the Image
      */
     public function SetImageConfiguration(int $channel, int $bright, int $contrast, int $saturation,
                                           int $hue, int $sharpen) {
@@ -284,6 +313,54 @@ class ReolinkCamera extends IPSModule {
                     "saturation" => $saturation,
                     "hue" => $hue,
                     "sharpen" => $sharpen
+                ]
+            ]);
+    }
+
+    /**
+     * Get Device Recordings in a certain time
+     * @param int $channel          Channel that should be searched in
+     * @param string $streamType    "main" or "sub" type on quality stream
+     * @param int $startYear        Year of the Search Start
+     * @param int $startMonth       Month of the Search Start
+     * @param int $startDay         Day of the Search Start
+     * @param int $startHour        Hour of the Search Start
+     * @param int $startMinute      Minute of the Search Start
+     * @param int $startSecond      Second of the Search Start
+     * @param int $endYear          Year of the Search End
+     * @param int $endMonth         Month of the Search End
+     * @param int $endDay           Day of the Search End
+     * @param int $endHour          Hour of the Search End
+     * @param int $endMinute        Minute of the Search End
+     * @param int $endSecond        Second of the Search End
+     * @return array|null           Recordings
+     */
+    public function GetRecordings(int $channel, string $streamType, int $startYear, int $startMonth, int $startDay,
+                                  int $startHour, int $startMinute, int $startSecond, int $endYear, int $endMonth,
+                                  int $endDay, int $endHour, int $endMinute, int $endSecond): ?array {
+        // request command on device
+        $this->cmd("Search", 0,
+            [
+                "Search" => [
+                    "channel" => $channel,
+                    "onlyStatus" => 0,
+                    "streamType" => $streamType,
+                    "StartTime" => [
+                        "year" => $startYear,
+                        "mon" => $startMonth,
+                        "day" => $startDay,
+                        "hour" => $startHour,
+                        "min" => $startMinute,
+                        "sec" => $startSecond
+                    ],
+                    "EndTime" => [
+                        "year" => $endYear,
+                        "mon" => $endMonth,
+                        "day" => $endDay,
+                        "hour" => $endHour,
+                        "min" => $endMinute,
+                        "sec" => $endSecond
+                    ]
                 ]
             ]);
     }
@@ -606,5 +683,4 @@ class ReolinkCamera extends IPSModule {
         ];
     }
 }
-
 ?>
