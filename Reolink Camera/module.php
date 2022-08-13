@@ -338,8 +338,9 @@ class ReolinkCamera extends IPSModule {
     public function GetRecordings(int $channel, string $streamType, int $startYear, int $startMonth, int $startDay,
                                   int $startHour, int $startMinute, int $startSecond, int $endYear, int $endMonth,
                                   int $endDay, int $endHour, int $endMinute, int $endSecond): ?array {
+
         // request command on device
-        $this->cmd("Search", 0,
+        $rsp = $this->cmd("Search", 1,
             [
                 "Search" => [
                     "channel" => $channel,
@@ -363,9 +364,23 @@ class ReolinkCamera extends IPSModule {
                     ]
                 ]
             ]);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        return $rsp["value"]["SearchResult"];
+        // request command on device
     }
 
-
+    /**
+     * Get Device Motion Detection State
+     * @return bool|null
+     */
+    public function GetMotionDetectionState(): ?bool {
+        // request command on device
+        $rsp = $this->cmd("GetMdState", 0, ["channel" => 0]);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        return boolval($rsp["value"]["state"]);
+    }
 
 
 
