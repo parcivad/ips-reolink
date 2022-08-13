@@ -48,7 +48,7 @@ class ReolinkCamera extends IPSModule {
         // TODO: change on var
     }
 
-    //============================================================================================== REOLINK FUNCTIONS
+    //============================================================================= REOLINK GETTER AND SETTER
 
     public function GetAbility(): array {
         // request command on device
@@ -101,17 +101,24 @@ class ReolinkCamera extends IPSModule {
         $rsp = $this->cmd("GetTime", 0, []);
         if (!isset($rsp)) return null;
         // if not empty return
-        return $rsp["value"];
+        return $rsp["value"]["Time"];
     }
 
     /**
      * Set Device Time
      */
     public function SetTime(int $year, int $month, int $day, int $hour, int $minute, int $second,
-                            string $timeFmt, int $timeZone, string $hourFmt): void {
+                            string $timeFmt, int $timeZone, int $hourFmt): void {
+        // request command on device
+        $rsp = $this->cmd("GetTime", 0, []);
+        if (!isset($rsp)) return;
+        // if not empty return
+        $DstSettings = $rsp["value"]["Dst"];
+
         // request command on device
         $this->cmd("SetTime", 0,
             [
+                "Dst" => $DstSettings,
                 "Time" => [
                     "day" => $day,
                     "hour" => $hour,
@@ -126,13 +133,106 @@ class ReolinkCamera extends IPSModule {
             ]);
     }
 
+    /**
+     * Get Device Time Shift
+     * @return array|null device name
+     */
+    public function GetTimeShift(): ?array {
+        // request command on device
+        $rsp = $this->cmd("GetTime", 0, []);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        $rsp["value"]["Dst"]["enable"] = boolval($rsp["value"]["Dst"]["enable"]);
+        return $rsp["value"]["Dst"];
+    }
 
+    /**
+     * Set Device Time Shift
+     */
+    public function SetTimeShift(bool $enable, int $startWeekday, int $startWeek, int $startMonth, int $startHour,
+                                 int $startMinute, int $startSecond, int $offset, int $endWeekday, int $endWeek,
+                                 int $endMonth, int $endHour, int $endMinute, int $endSecond): void {
+        // request command on device
+        $rsp = $this->cmd("GetTime", 0, []);
+        if (!isset($rsp)) return;
+        // if not empty return
+        $TimeSettings = $rsp["value"]["Time"];
 
+        // request command on device
+        $this->cmd("SetTime", 0,
+            [
+                "Dst" => [
+                    "enable" => intval($enable),
+                    "endHour" => $endHour,
+                    "endMin" => $endMinute,
+                    "endMon" => $endMonth,
+                    "endSec" => $endSecond,
+                    "endWeek" => $endWeek,
+                    "endWeekday" => $endWeekday,
+                    "offset" => $offset,
+                    "startHour" => $startHour,
+                    "startMin" => $startMinute,
+                    "startMon" => $startMonth,
+                    "startSec" => $startSecond,
+                    "startWeek" => $startWeek,
+                    "startWeekday" => $startWeekday
+                ],
+                "Time" => $TimeSettings
+            ]);
+    }
 
+    /**
+     * Get Device HDD info
+     * @return string|null device name
+     */
+    public function GetHDDInfo(): ?string {
+        // request command on device
+        $rsp = $this->cmd("GetHddInfo", 0, []);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        return $rsp["value"]["HddInfo"];
+    }
 
+    /**
+     * Get Device Name
+     * @return string|null device name
+     */
+    public function GetOnline(): ?string {
+        // request command on device
+        $rsp = $this->cmd("GetOnline", 0, []);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        foreach ($rsp["value"]["User"] as $user) {
+            $user["canbeDisconn"] = boolval($user["canbeDisconn"]);
+        }
+        return $rsp["value"]["User"];
+    }
 
-
-
+    /**
+     * Disconnect an online user
+     * @param string $userName  Name of the user
+     * @throws ErrorException   When no user is found
+     */
+    public function DisconnectUser(string $userName): void {
+        // request command on device
+        $rsp = $this->cmd("GetOnline", 0, []);
+        if (!isset($rsp)) return;
+        // if not empty return
+        foreach ($rsp["value"]["User"] as $user) {
+            if ($user["userName"] == $userName) {
+                // disconnect this user
+                $this->cmd("Disconnect", 0, [
+                    "User" => [
+                        "userName" => $userName,
+                        "sessionId" => $user["sessionId"]
+                    ]
+                ]);
+                return;
+            }
+        }
+        // no user found
+        throw new ErrorException("Couldn't find a user with the name ". $userName);
+    }
 
 
 

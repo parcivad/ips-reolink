@@ -53,7 +53,7 @@ function cmd(string $ip, string $token, string $cmd, string $action, array $para
             throw new ErrorException("session reset needed", 201);
         }
         // other error will be shown via exception
-        throw new ErrorException($arrayResponse["error"]["detail"], $arrayResponse["error"]["rspCode"] * -1);
+        throw new ErrorException($arrayResponse["error"]["detail"], $arrayResponse["error"]["rspCode"] * -1000);
     }
 
     return $arrayResponse;
