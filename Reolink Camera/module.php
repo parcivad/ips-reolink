@@ -16,6 +16,12 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterPropertyString("password", "");
         $this->RegisterPropertyString("ip", "0.0.0.0");
 
+        $this->RegisterPropertyInteger("scheduledCommon", 10);
+        $this->RegisterPropertyInteger("scheduledImportant", 10);
+        $this->RegisterPropertyBoolean("liveCameraView", true);
+        $this->RegisterPropertyBoolean("imageGrabber", true);
+        $this->RegisterPropertyInteger("imageGrabberRate", 10);
+
         // configurations
         $this->RegisterPropertyBoolean("log", true);
 
@@ -24,13 +30,35 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterAttributeString("token", null);
         $this->RegisterAttributeInteger("leaseTime", null);
         $this->RegisterAttributeInteger("timestamp", null);
+
+        $this->registerProfiles();
+
+        // register Variables
+        $this->RegisterVariableString("name", "Name", "", 0);
+        $this->RegisterVariableString("version", "Version", "", 1);
+
+        $this->RegisterVariableBoolean("motion", "Motion", "Motion", 4);
+        $this->RegisterVariableBoolean("wifi", "Wifi", "Switch", 5);
+        $this->RegisterVariableInteger("bright", "Bright", "Intensity.255", 6);
+        $this->RegisterVariableInteger("contrast", "Contrast", "Intensity.255", 7);
+        $this->RegisterVariableInteger("hue", "Hue", "Intensity.255", 8);
+        $this->RegisterVariableInteger("saturation", "Saturation", "Intensity.255", 9);
+        $this->RegisterVariableInteger("sharpen", "Sharpen", "Intensity.255", 9);
+
+        $this->RegisterVariableInteger("hdd_capacity", "HDD_CAPACITY", "REO_CAPACITY", 10);
+        $this->RegisterVariableInteger("hdd_used_capacity", "HDD_USED_CAPACITY", "REO_CAPACITY", 11);
+        $this->RegisterVariableInteger("hdd_remaining_capacity", "HDD_REMAINING_CAPACITY", "REO_CAPACITY", 12);
+        $this->RegisterVariableBoolean("hdd_formatted","HDD_FORMATTED", "", 13);
+        $this->RegisterVariableBoolean("hdd_mounted", "HDD_MOUNTED", "", 14);
+
+        // Scheduled Functions
+        $this->RegisterTimer('scheduldCommon', 600000, "REOLINK_refreshCommonVariables( $this->InstanceID );");
+        $this->RegisterTimer('scheduldImportant', 40000, "REOLINK_refreshImportantVariables( $this->InstanceID );");
     }
 
     // called on changes
     public function ApplyChanges() {
         parent::ApplyChanges();
-
-        //TODO: implement in Token getter
     }
 
     // when destroyed disconnect from camera
@@ -46,6 +74,55 @@ class ReolinkCamera extends IPSModule {
 
     public function RequestAction($Ident, $Value) {
         // TODO: change on var
+    }
+
+    //============================================================================= Scheduled Background Checks
+
+    /**
+     * Scheduled function to refresh some background variables of the Instanze
+     * @return void
+     */
+    public function refreshCommonVariables() {
+        // request command on device
+        $ImageSettings = $this->GetImageConfiguration();
+        if (!isset($ImageSettings)) return;
+        // Set Variables
+        $this->SetValue("bright", $ImageSettings["bright"]);
+        $this->SetValue("contrast", $ImageSettings["contrast"]);
+        $this->SetValue("hue", $ImageSettings["hue"]);
+        $this->SetValue("saturation", $ImageSettings["saturation"]);
+        $this->SetValue("sharpen", $ImageSettings["sharpen"]);
+
+        // next hdd
+        $HDDInfo = $this->GetHDDInfo();
+        if (!isset($HDDInfo)) return;
+        // Set Variables
+        $this->SetValue("hdd_capacity", $HDDInfo["capacity"]);
+        $this->SetValue("hdd_used_capacity", $HDDInfo["capacity"]-$HDDInfo["remainingCapacity"]);
+        $this->SetValue("hdd_remaining_capacity", $HDDInfo["remainingCapacity"]);
+        $this->SetValue("hdd_formatted", $HDDInfo["formatted"]);
+        $this->SetValue("hdd_mounted", $ImageSettings["mounted"]);
+
+        // next name and wifi
+        $DevInfo = $this->GetDevInfo();
+        if (!isset($DevInfo)) return;
+        // Set Variables
+        $this->SetValue("name", $DevInfo["name"]);
+        $this->SetValue("version", $DevInfo["firmVer"]);
+        $this->SetValue("wifi", $DevInfo["wifi"]);
+    }
+
+    /**
+     * Scheduled function to refresh some background variables of the Instanze
+     * @return void
+     */
+    public function refreshImportantVariables() {
+        // request on device
+        $MotionState = $this->GetMotionDetectionState();
+        // if valid
+        if (!isset($MotionState)) return;
+        // Set Variable
+        $this->SetValue("motion", $MotionState);
     }
 
     //============================================================================= REOLINK GETTER AND SETTER
@@ -284,9 +361,9 @@ class ReolinkCamera extends IPSModule {
      * @param int $channel  Channel of the Device
      * @return array|null Image Configuration
      */
-    public function GetImageConfiguration(int $channel): ?array {
+    public function GetImageConfiguration(): ?array {
         // request command on device
-        $rsp = $this->cmd("GetImage", 0, ["channel" => $channel]);
+        $rsp = $this->cmd("GetImage", 0, ["channel" => 0]);
         if (!isset($rsp)) return null;
         // if not empty return
         return $rsp["value"]["Image"];
@@ -518,6 +595,14 @@ class ReolinkCamera extends IPSModule {
 
     //============================================================================================== FORM.JSON
 
+    protected function registerProfiles() {
+        // Generate Variable Profiles
+        if (!IPS_VariableProfileExists('REO_CAPACITY')) {
+            IPS_CreateVariableProfile('REO_CAPACITY', 1,);
+            IPS_SetVariableProfileText("REO_CAPACITY", "", "Mb");
+        }
+    }
+
     /** This Function will return the IP Symcon needed form.json
      * @return false|string Form json
      */
@@ -615,9 +700,51 @@ class ReolinkCamera extends IPSModule {
                 ],
             ],
             [
-                "type" => "CheckBox",
-                "name" => "log",
-                "caption" => "Log"
+                "type" => "RowLayout",
+                "items" => [
+                    [
+                        "type" => "NumberSpinner",
+                        "name" => "scheduledCommon",
+                        "caption" => "Variables refresh rate",
+                        "suffix" => "min.",
+                        "minimum" => 5,
+                        "maximum" => 15
+                    ],
+                    [
+                        "type" => "NumberSpinner",
+                        "name" => "scheduledImportant",
+                        "caption" => "Motion refresh rate",
+                        "suffix" => "sec.",
+                        "minimum" => 2
+                    ],
+                    [
+                        "type" => "NumberSpinner",
+                        "name" => "imageGrabberRate",
+                        "caption" => "Image Grabber refresh rate",
+                        "suffix" => "sec.",
+                        "minimum" => 2
+                    ]
+                ]
+            ],
+            [
+                "type" => "RowLayout",
+                "items" => [
+                    [
+                        "type" => "CheckBox",
+                        "name" => "liveCameraView",
+                        "caption" => "Live Camera View"
+                    ],
+                    [
+                        "type" => "CheckBox",
+                        "name" => "imageGrabber",
+                        "caption" => "Image Grabber"
+                    ],
+                    [
+                        "type" => "CheckBox",
+                        "name" => "log",
+                        "caption" => "Log"
+                    ]
+                ]
             ]
         ];
     }
