@@ -50,18 +50,19 @@ class ReolinkCamera extends IPSModule {
 
     //============================================================================================== REOLINK FUNCTIONS
 
-    public function GetAbility() {
+    public function GetAbility(): array {
         // request command on device
-        $rsp = $this->cmd("GetDevInfo", 0, ["User" => ["userName" => $this->ReadPropertyString("username")]]);
+        $rsp = $this->cmd("GetAbility", 0, ["User" => ["userName" => $this->ReadPropertyString("username")]]);
         if (!isset($rsp)) return [];
         // if not empty return
-        return $rsp["value"];
+        return $rsp["value"]["Ability"];
     }
 
-    /** Get Device Info
+    /**
+     * Get Device Info
      * @return array|mixed list of device information
      */
-    public function GetDevInfo() {
+    public function GetDevInfo(): array {
         // request command on device
         $rsp = $this->cmd("GetDevInfo", 0, []);
         if (!isset($rsp)) return [];
@@ -70,7 +71,8 @@ class ReolinkCamera extends IPSModule {
         return $rsp["value"]["DevInfo"];
     }
 
-    /** Get Device Name
+    /**
+     * Get Device Name
      * @return string|null device name
      */
     public function GetDevName(): ?string {
@@ -81,7 +83,8 @@ class ReolinkCamera extends IPSModule {
         return $rsp["value"]["DevName"]["name"];
     }
 
-    /** Set Device Name
+    /**
+     * Set Device Name
      * @param string $name new device name
      */
     public function SetDevName(string $name) {
@@ -89,6 +92,39 @@ class ReolinkCamera extends IPSModule {
         $this->cmd("SetDevName", 0, ["DevName" => ["name" => $name]]);
     }
 
+    /**
+     * Get Device Time
+     * @return array|null device name
+     */
+    public function GetTime(): ?array {
+        // request command on device
+        $rsp = $this->cmd("GetTime", 0, []);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        return $rsp["value"];
+    }
+
+    /**
+     * Set Device Time
+     */
+    public function SetTime(int $year, int $month, int $day, int $hour, int $minute, int $second,
+                            string $timeFmt, int $timeZone, string $hourFmt): void {
+        // request command on device
+        $this->cmd("SetTime", 0,
+            [
+                "Time" => [
+                    "day" => $day,
+                    "hour" => $hour,
+                    "min" => $minute,
+                    "mon" => $month,
+                    "sec" => $second,
+                    "timeFmt" => $timeFmt,
+                    "timeZone" => $timeZone,
+                    "year" => $year,
+                    "hourFmt" => $hourFmt
+                ]
+            ]);
+    }
 
 
 
