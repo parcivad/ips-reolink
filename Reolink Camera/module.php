@@ -201,6 +201,21 @@ class ReolinkCamera extends IPSModule {
     }
 
     /**
+     * Get Device Channel
+     * @return array|null Channel Status
+     */
+    public function GetChannelStatus(): ?array {
+        // request command on device
+        $rsp = $this->cmd("GetChannelstatus", 0, []);
+        if (!isset($rsp)) return null;
+        // if not empty return
+        for ($i=0; $i < count($rsp["value"]["status"]); $i++) {
+            $rsp["value"]["status"][$i]["online"] = boolval($rsp["value"]["status"][$i]["online"]);
+        }
+        return $rsp["value"];
+    }
+
+    /**
      * Get Device Name
      * @return array|null device name
      */
@@ -251,7 +266,7 @@ class ReolinkCamera extends IPSModule {
         $rsp = $this->cmd("GetImage", 0, ["channel" => $channel]);
         if (!isset($rsp)) return null;
         // if not empty return
-        return $rsp["value"];
+        return $rsp["value"]["Image"];
     }
 
     /**
