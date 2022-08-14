@@ -85,16 +85,20 @@ class ReolinkCamera extends IPSModule {
                     $this->GetValue("hue"),
                     $this->GetValue("sharpen"),
                 );
+                $this->SetValue($Ident, $Value);
                 break;
 
             case "time_format":
                 $this->SetTimeFormat($Value);
+                $this->SetValue($Ident, $Value);
                 break;
 
             case "hour_format":
-                $this->SetHourFormat($Value);
+                $this->SetValue($Ident, $Value);
                 break;
         }
+        // update image
+        $this->UpdateSnapshot();
     }
 
     //============================================================================= Scheduled Background Checks
@@ -157,7 +161,7 @@ class ReolinkCamera extends IPSModule {
 
     public function GetAbility(): array {
         // request command on device
-        $rsp = $this->cmd("GetAbility", 0, ["User" => ["userName" => $this->ReadPropertyString("username")]]);
+        $rsp = $this->cmd("GetAbility", 0, ["User" => ["userName" => $this->ReadPropertyString("username")]], false);
         if (!isset($rsp)) return [];
         // if not empty return
         return $rsp["value"]["Ability"];
@@ -169,7 +173,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetDevInfo(): array {
         // request command on device
-        $rsp = $this->cmd("GetDevInfo", 0, []);
+        $rsp = $this->cmd("GetDevInfo", 0, [], false);
         if (!isset($rsp)) return [];
         // if not empty return
         $rsp["value"]["DevInfo"]["wifi"] = boolval($rsp["value"]["DevInfo"]["wifi"]);
@@ -182,7 +186,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetDevName(): ?string {
         // request command on device
-        $rsp = $this->cmd("GetDevName", 0, []);
+        $rsp = $this->cmd("GetDevName", 0, [], false);
         if (!isset($rsp)) return null;
         // if not empty return
         return $rsp["value"]["DevName"]["name"];
@@ -194,7 +198,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function SetDevName(string $name) {
         // request command on device
-        $this->cmd("SetDevName", 0, ["DevName" => ["name" => $name]]);
+        $this->cmd("SetDevName", 0, ["DevName" => ["name" => $name]], false);
     }
 
     /**
@@ -203,7 +207,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetTime(): ?array {
         // request command on device
-        $rsp = $this->cmd("GetTime", 0, []);
+        $rsp = $this->cmd("GetTime", 0, [], false);
         if (!isset($rsp)) return null;
         // if not empty return
         return $rsp["value"]["Time"];
@@ -224,7 +228,7 @@ class ReolinkCamera extends IPSModule {
     public function SetTime(int $year, int $month, int $day, int $hour, int $minute, int $second,
                             string $timeFmt, int $timeZone, int $hourFmt): void {
         // request command on device
-        $rsp = $this->cmd("GetTime", 0, []);
+        $rsp = $this->cmd("GetTime", 0, [], false);
         if (!isset($rsp)) return;
         // if not empty return
         $DstSettings = $rsp["value"]["Dst"];
@@ -244,7 +248,7 @@ class ReolinkCamera extends IPSModule {
                     "year" => $year,
                     "hourFmt" => $hourFmt
                 ]
-            ]);
+            ], false);
     }
 
     /**
@@ -253,13 +257,13 @@ class ReolinkCamera extends IPSModule {
      */
     public function SetTimeFormat(string $timeFmt): void {
         // request command on device
-        $rsp = $this->cmd("GetTime", 0, []);
+        $rsp = $this->cmd("GetTime", 0, [], false);
         if (!isset($rsp)) return;
         // if not empty return
         $rsp["value"]["Time"]["timeFmt"] = $timeFmt;
 
         // request command on device
-        $this->cmd("SetTime", 0, $rsp["value"]);
+        $this->cmd("SetTime", 0, $rsp["value"], false);
     }
 
     /**
@@ -268,13 +272,13 @@ class ReolinkCamera extends IPSModule {
      */
     public function SetHourFormat(int $hourFmt): void {
         // request command on device
-        $rsp = $this->cmd("GetTime", 0, []);
+        $rsp = $this->cmd("GetTime", 0, [], false);
         if (!isset($rsp)) return;
         // if not empty return
         $rsp["value"]["Time"]["hourFmt"] = $hourFmt;
 
         // request command on device
-        $this->cmd("SetTime", 0, $rsp["value"]);
+        $this->cmd("SetTime", 0, $rsp["value"], false);
     }
 
     /**
@@ -283,7 +287,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetTimeShift(): ?array {
         // request command on device
-        $rsp = $this->cmd("GetTime", 0, []);
+        $rsp = $this->cmd("GetTime", 0, [], false);
         if (!isset($rsp)) return null;
         // if not empty return
         $rsp["value"]["Dst"]["enable"] = boolval($rsp["value"]["Dst"]["enable"]);
@@ -311,7 +315,7 @@ class ReolinkCamera extends IPSModule {
                                  int $startMinute, int $startSecond, int $offset, int $endWeekday, int $endWeek,
                                  int $endMonth, int $endHour, int $endMinute, int $endSecond): void {
         // request command on device
-        $rsp = $this->cmd("GetTime", 0, []);
+        $rsp = $this->cmd("GetTime", 0, [], false);
         if (!isset($rsp)) return;
         // if not empty return
         $TimeSettings = $rsp["value"]["Time"];
@@ -336,7 +340,7 @@ class ReolinkCamera extends IPSModule {
                     "startWeekday" => $startWeekday
                 ],
                 "Time" => $TimeSettings
-            ]);
+            ], false);
     }
 
     /**
@@ -345,7 +349,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetHDDInfo(): ?array {
         // request command on device
-        $rsp = $this->cmd("GetHddInfo", 0, []);
+        $rsp = $this->cmd("GetHddInfo", 0, [], false);
         if (!isset($rsp)) return null;
         // if not empty return
         return [
@@ -364,7 +368,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetChannelStatus(): ?array {
         // request command on device
-        $rsp = $this->cmd("GetChannelstatus", 0, []);
+        $rsp = $this->cmd("GetChannelstatus", 0, [], false);
         if (!isset($rsp)) return null;
         // if not empty return
         for ($i=0; $i < count($rsp["value"]["status"]); $i++) {
@@ -379,7 +383,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetOnline(): ?array {
         // request command on device
-        $rsp = $this->cmd("GetOnline", 0, []);
+        $rsp = $this->cmd("GetOnline", 0, [], false);
         if (!isset($rsp)) return null;
         // if not empty return
         for ($i=0; $i < count($rsp["value"]["User"]); $i++) {
@@ -395,7 +399,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function DisconnectUser(string $userName): void {
         // request command on device
-        $rsp = $this->cmd("GetOnline", 0, []);
+        $rsp = $this->cmd("GetOnline", 0, [], false);
         if (!isset($rsp)) return;
         // if not empty return
         foreach ($rsp["value"]["User"] as $user) {
@@ -406,7 +410,7 @@ class ReolinkCamera extends IPSModule {
                         "userName" => $userName,
                         "sessionId" => $user["sessionId"]
                     ]
-                ]);
+                ], false);
                 return;
             }
         }
@@ -416,12 +420,11 @@ class ReolinkCamera extends IPSModule {
 
     /**
      * Get Device Image Configuration
-     * @param int $channel  Channel of the Device
      * @return array|null Image Configuration
      */
     public function GetImageConfiguration(): ?array {
         // request command on device
-        $rsp = $this->cmd("GetImage", 0, ["channel" => 0]);
+        $rsp = $this->cmd("GetImage", 0, ["channel" => 0], false);
         if (!isset($rsp)) return null;
         // if not empty return
         return $rsp["value"]["Image"];
@@ -447,7 +450,7 @@ class ReolinkCamera extends IPSModule {
                     "hue" => $hue,
                     "sharpen" => $sharpen
                 ]
-            ]);
+            ], false);
     }
 
     /**
@@ -496,7 +499,7 @@ class ReolinkCamera extends IPSModule {
                         "sec" => $endSecond
                     ]
                 ]
-            ]);
+            ], false);
         if (!isset($rsp)) return null;
         // if not empty return
         return $rsp["value"]["SearchResult"];
@@ -509,7 +512,7 @@ class ReolinkCamera extends IPSModule {
      */
     public function GetMotionDetectionState(): ?bool {
         // request command on device
-        $rsp = $this->cmd("GetMdState", 0, ["channel" => 0]);
+        $rsp = $this->cmd("GetMdState", 0, ["channel" => 0], false);
         if (!isset($rsp)) return null;
         // if not empty return
         return boolval($rsp["value"]["state"]);
@@ -518,13 +521,15 @@ class ReolinkCamera extends IPSModule {
     /**
      * Function to get data64 coded image
      * @return void
+     * @throws Exception
      */
-    public function UpdateSnapshot( ) {
+    public function UpdateSnapshot(): void {
         // request on device and get instance
-        $image = $this->cmd("Snap&channel=0&rs=".base64_encode(random_bytes(10)), 0, []);
+        $image = $this->cmd("Snap&channel=0&rs=".base64_encode(random_bytes(10)), 0, [], true);
+        if (!isset($image)) return;
         $mediaID = IPS_GetMediaIDByName("Snapshot", $this->InstanceID);
         // check for null
-        if (!isset($image) || !isset($mediaID)) return;
+        if (!isset($mediaID)) return;
         // set image
         IPS_SetMediaContent($mediaID, base64_encode($image));
     }
@@ -534,12 +539,13 @@ class ReolinkCamera extends IPSModule {
     //============================================================================================== SESSION HANDLER
 
     /*** Function that makes a device call simple by using api curl file
-     * @param string $cmd Command that should be executed
-     * @param string $action Action type 1/0
-     * @param array $param Parameters of the function
+     * @param string $cmd       Command that should be executed
+     * @param string $action    Action type 1/0
+     * @param array $param      Parameters of the function
+     * @param bool $raw         Raw return of response
      * @return array|null
      */
-    protected function cmd(string $cmd, string $action, array $param) {
+    protected function cmd(string $cmd, string $action, array $param, bool $raw) {
         $this->_log("starting API call, command: " . $cmd, KL_MESSAGE);
         // try to request on device
         try {
@@ -547,7 +553,7 @@ class ReolinkCamera extends IPSModule {
             $ip = $this->ReadPropertyString("ip");
             $token = $this->getToken();
             $this->SetStatus(102);
-            return cmd($ip, $token, $cmd, $action, $param);
+            return cmd($ip, $token, $cmd, $action, $param, $raw);
         } catch (ErrorException $exception) {
             // session reset
             if ($exception->getCode() == 201) {

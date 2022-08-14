@@ -1,22 +1,22 @@
 <?php
 
 /*** Function to make a command call to the device
- * @param string $ip ip of the device
- * @param string $token Token of the user
- * @param string $cmd Command that should be executed
- * @param string $action Action type
- * @param array $param requested params
- * @return array
+ * @param string $ip        ip of the device
+ * @param string $token     Token of the user
+ * @param string $cmd       Command that should be executed
+ * @param string $action    Action type
+ * @param array $param      requested params
+ * @param bool $raw         raw return
  * @throws ErrorException
  */
-function cmd(string $ip, string $token, string $cmd, string $action, array $param) : array {
+function cmd(string $ip, string $token, string $cmd, string $action, array $param, bool $raw) {
     $header_array = array('Content-Type: application/json');
     // build url
     $url = "http://" . $ip . "/api.cgi?cmd=" . $cmd . "&token=" . $token;
 
     $body = "[".json_encode(
             [
-                "cmd" => $cmd,
+                "cmd" => explode("&", $cmd)[0],
                 "action" => $action,
                 "param" => $param
             ]
@@ -42,6 +42,7 @@ function cmd(string $ip, string $token, string $cmd, string $action, array $para
 
     // check if there is any response
     if ($response == null) throw new ErrorException("Can't access device on this ip", 200);
+    if ($raw) return $response;
 
     $arrayResponse = json_decode($response, true)[0];
 
