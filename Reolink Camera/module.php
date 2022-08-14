@@ -20,7 +20,10 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterPropertyInteger("scheduledImportant", 5);
         $this->RegisterPropertyBoolean("liveCameraView", true);
         $this->RegisterPropertyBoolean("imageGrabber", true);
+        $this->RegisterPropertyBoolean("saveImageOnMotion", true);
         $this->RegisterPropertyInteger("imageGrabberRate", 10);
+        $this->RegisterPropertyBoolean("liveStream", false);
+        $this->RegisterPropertyInteger("streamType", 0);
 
         // configurations
         $this->RegisterPropertyBoolean("log", true);
@@ -106,6 +109,7 @@ class ReolinkCamera extends IPSModule {
     /**
      * Scheduled function to refresh some background variables of the Instanze
      * @return void
+     * @throws Exception
      */
     public function refreshCommonVariables() {
         // request command on device
@@ -142,11 +146,15 @@ class ReolinkCamera extends IPSModule {
         // Set Variables
         $this->SetValue("time_format", $TimeSettings["timeFmt"]);
         $this->SetValue("hour_format", $TimeSettings["hourFmt"]);
+
+        // refresh Live Stream settings
+        $this->UpdateLiveStream();
     }
 
     /**
      * Scheduled function to refresh some background variables of the Instanze
      * @return void
+     * @throws Exception
      */
     public function refreshImportantVariables() {
         // request on device
@@ -509,11 +517,24 @@ class ReolinkCamera extends IPSModule {
     /**
      * Get Device Motion Detection State
      * @return bool|null
+     * @throws Exception
      */
     public function GetMotionDetectionState(): ?bool {
         // request command on device
         $rsp = $this->cmd("GetMdState", 0, ["channel" => 0], false);
         if (!isset($rsp)) return null;
+        // check if save is checked
+        if ($this->ReadPropertyBoolean("saveImageOnMotion") && $rsp["value"]["state"]) {
+            // request on device and get instance
+            $image = $this->cmd("Snap&channel=0&rs=".base64_encode(random_bytes(10)), 0, [], true);
+            if (!isset($image)) return null;
+            $mediaID = IPS_GetMediaIDByName("LastMotionSnapshot", $this->InstanceID);
+            // check for null
+            if (!isset($mediaID)) return null;
+            // set image
+            IPS_SetMediaContent($mediaID, base64_encode($image));
+        }
+
         // if not empty return
         return boolval($rsp["value"]["state"]);
     }
@@ -534,7 +555,34 @@ class ReolinkCamera extends IPSModule {
         IPS_SetMediaContent($mediaID, base64_encode($image));
     }
 
+    /**
+     * Function to get data64 coded image
+     * @return void
+     * @throws Exception
+     */
+    public function UpdateLiveStream(): void {
+        // request on device and get instance
+        if (!isset($image)) return;
+        $mediaID = IPS_GetMediaIDByName("LiveStream", $this->InstanceID);
+        // check for null
+        if (!isset($mediaID)) return;
 
+        if ($this->ReadPropertyString("liveStream")) {
+            // enabled
+            IPS_SetDisabled($mediaID, false);
+            $streamTypeString = ["main", "sub", "ext"];
+            $streamType = $this->ReadPropertyString("streamType")
+            // set image
+            IPS_SetMediaFile(
+                $mediaID,
+                "rtmp://". $this->ReadPropertyString("usedIP") ."/bcs/channel0_". $streamTypeString[$streamType].".bcs?channel=0&stream=". $streamType ."&token=". $this->getToken(),
+                false);
+            return;
+        }
+        // not active then disable instance
+        IPS_SetDisabled($mediaID, true);
+        IPS_SetMediaFile($mediaID, " ", false);
+    }
 
     //============================================================================================== SESSION HANDLER
 
@@ -694,7 +742,7 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterVariableInteger("hdd_capacity", "HDD_CAPACITY", "REO_CAPACITY", 30);
         $this->RegisterVariableInteger("hdd_used_capacity", "HDD_USED_CAPACITY", "REO_CAPACITY", 31);
         $this->RegisterVariableInteger("hdd_remaining_capacity", "HDD_REMAINING_CAPACITY", "REO_CAPACITY", 32);
-        $this->RegisterVariableBoolean("hdd_formatted","HDD_FORMATTED", "", 33);
+        $this->RegisterVariableBoolean("hdd_formatted", "HDD_FORMATTED", "", 33);
         $this->RegisterVariableBoolean("hdd_mounted", "HDD_MOUNTED", "", 34);
 
         // action register
@@ -706,14 +754,35 @@ class ReolinkCamera extends IPSModule {
         $this->EnableAction("time_format");
         $this->EnableAction("hour_format");
 
-        // image media
-        if (@IPS_GetMediaIDByName("Snapshot", $this->InstanceID) == false ) {
+        // snapshot image
+        if (@IPS_GetMediaIDByName("Snapshot", $this->InstanceID) == false) {
             $createdMediaID = IPS_CreateMedia(MEDIATYPE_IMAGE);
             IPS_SetName($createdMediaID, "Snapshot");
             IPS_SetPosition($createdMediaID, 2);
             IPS_Sleep(2000);
             IPS_SetMediaCached($createdMediaID, false);
-            IPS_SetMediaFile($createdMediaID, "Snapshot".$this->InstanceID.".jpg", false);
+            IPS_SetMediaFile($createdMediaID, "Snapshot" . $this->InstanceID . ".jpg", false);
+            IPS_SetParent($createdMediaID, $this->InstanceID);
+        }
+
+        // last motion snapshot
+        if (@IPS_GetMediaIDByName("LastMotionSnapshot", $this->InstanceID) == false) {
+            $createdMediaID = IPS_CreateMedia(MEDIATYPE_IMAGE);
+            IPS_SetName($createdMediaID, "LastMotionSnapshot");
+            IPS_SetPosition($createdMediaID, 3);
+            IPS_Sleep(2000);
+            IPS_SetMediaCached($createdMediaID, false);
+            IPS_SetMediaFile($createdMediaID, "LastMotionSnapshot" . $this->InstanceID . ".jpg", false);
+            IPS_SetParent($createdMediaID, $this->InstanceID);
+        }
+
+        // live stream rtmp
+        if (@IPS_GetMediaIDByName("LiveStream", $this->InstanceID) == false) {
+            $createdMediaID = IPS_CreateMedia(MEDIATYPE_STREAM);
+            IPS_SetName($createdMediaID, "LiveStream");
+            IPS_SetPosition($createdMediaID, 3);
+            IPS_Sleep(2000);
+            IPS_SetMediaCached($createdMediaID, false);
             IPS_SetParent($createdMediaID, $this->InstanceID);
         }
     }
@@ -873,7 +942,12 @@ class ReolinkCamera extends IPSModule {
                     [
                         "type" => "CheckBox",
                         "name" => "imageGrabber",
-                        "caption" => "Snapshot Update"
+                        "caption" => "Snapshot update"
+                    ],
+                    [
+                        "type" => "CheckBox",
+                        "name" => "saveImageOnMotion",
+                        "caption" => "Save image on motion"
                     ],
                     [
                         "type" => "CheckBox",
