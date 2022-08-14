@@ -620,7 +620,7 @@ class ReolinkCamera extends IPSModule {
         if ($this->ReadAttributeString("token") == null) return;
 
         // send command to device
-        cmd($ip, $this->ReadAttributeString("token"), "Logout", 0, []);
+        cmd($ip, $this->ReadAttributeString("token"), "Logout", 0, [], false);
 
         $this->_log("Active user should be logged out", KL_MESSAGE);
 
@@ -646,7 +646,7 @@ class ReolinkCamera extends IPSModule {
 
         // send command to device
         $ip = $this->ReadPropertyString("ip");
-        $rsp = cmd($ip, "", "Login", 0, $param);
+        $rsp = cmd($ip, "", "Login", 0, $param, false);
 
         $this->WriteAttributeString("usedIP", $ip);
         $this->WriteAttributeString("token", $rsp["value"]["Token"]["name"]);
