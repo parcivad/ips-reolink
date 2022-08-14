@@ -44,7 +44,9 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterTimer('imageGrabberRate', 10000, "REOLINK_UpdateSnapshot( $this->InstanceID );");
     }
 
-    // called on changes
+    /**
+     * @throws Exception
+     */
     public function ApplyChanges() {
         parent::ApplyChanges();
 
@@ -59,7 +61,6 @@ class ReolinkCamera extends IPSModule {
 
         // call function
         $this->refreshCommonVariables();
-        $this->UpdateSnapshot();
     }
 
     // when destroyed disconnect from camera
@@ -561,21 +562,19 @@ class ReolinkCamera extends IPSModule {
      * @throws Exception
      */
     public function UpdateLiveStream(): void {
-        // request on device and get instance
-        if (!isset($image)) return;
         $mediaID = IPS_GetMediaIDByName("LiveStream", $this->InstanceID);
         // check for null
         if (!isset($mediaID)) return;
 
-        if ($this->ReadPropertyString("liveStream")) {
+        if ($this->ReadPropertyBoolean("liveStream")) {
             // enabled
             IPS_SetDisabled($mediaID, false);
             $streamTypeString = ["main", "sub", "ext"];
-            $streamType = $this->ReadPropertyString("streamType")
+            $streamType = $this->ReadPropertyInteger("streamType");
             // set image
             IPS_SetMediaFile(
                 $mediaID,
-                "rtmp://". $this->ReadPropertyString("usedIP") ."/bcs/channel0_". $streamTypeString[$streamType].".bcs?channel=0&stream=". $streamType ."&token=". $this->getToken(),
+                "rtsp://".$this->ReadPropertyString("username").":". $this->ReadPropertyString("password") ."@". $this->ReadAttributeString("usedIP") .":554/h264Preview_01_".$streamTypeString[$streamType],
                 false);
             return;
         }
@@ -913,6 +912,16 @@ class ReolinkCamera extends IPSModule {
                 "type" => "RowLayout",
                 "items" => [
                     [
+                        "type" => "Select",
+                        "name" => "streamType",
+                        "caption" => "RTMP Stream Type",
+                        "options" => [
+                            ["caption" => "Main Stream", "value" => 0],
+                            ["caption" => "Sub Stream", "value" => 1],
+                            ["caption" => "Extern Stream", "value" => 2]
+                        ]
+                    ],
+                    [
                         "type" => "NumberSpinner",
                         "name" => "scheduledCommon",
                         "caption" => "Variables refresh rate",
@@ -939,6 +948,11 @@ class ReolinkCamera extends IPSModule {
             [
                 "type" => "RowLayout",
                 "items" => [
+                    [
+                        "type" => "CheckBox",
+                        "name" => "liveStream",
+                        "caption" => "RTMP Live Stream"
+                    ],
                     [
                         "type" => "CheckBox",
                         "name" => "imageGrabber",
