@@ -8,7 +8,6 @@ class ReolinkCamera extends IPSModule {
     //============================================================================================== IP-SYMCON FUNCTIONS
 
     // overwrite default create function
-    
     public function Create() {
         parent::Create();
 
@@ -23,10 +22,8 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterPropertyBoolean("imageGrabber", true);
         $this->RegisterPropertyBoolean("saveImageOnMotion", true);
         $this->RegisterPropertyInteger("imageGrabberRate", 10);
-        $this->RegisterPropertyInteger("recordingsRate", 8);
         $this->RegisterPropertyBoolean("liveStream", false);
         $this->RegisterPropertyInteger("streamType", 0);
-        $this->RegisterPropertyBoolean("openRecording", true);
 
         // configurations
         $this->RegisterPropertyBoolean("log", true);
@@ -45,7 +42,6 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterTimer('scheduledCommon', 600000, "REOLINK_refreshCommonVariables( $this->InstanceID );");
         $this->RegisterTimer('scheduledImportant', 5000, "REOLINK_refreshImportantVariables( $this->InstanceID );");
         $this->RegisterTimer('imageGrabberRate', 10000, "REOLINK_UpdateSnapshot( $this->InstanceID );");
-        $this->RegisterTimer('recordingsPull', 900000, "REOLINK_UpdateRecordings( $this->InstanceID );");
     }
 
     /**
@@ -57,7 +53,6 @@ class ReolinkCamera extends IPSModule {
         // renew time
         $this->SetTimerInterval("scheduledCommon", $this->ReadPropertyInteger("scheduledCommon") * 60000);
         $this->SetTimerInterval("scheduledImportant", $this->ReadPropertyInteger("scheduledCommon") * 1000);
-        $this->SetTimerInterval("recordingsPull", $this->ReadPropertyInteger("recordingsRate") * 60000);
         if ($this->ReadPropertyBoolean("imageGrabber")) {
             $this->SetTimerInterval("imageGrabberRate", $this->ReadPropertyInteger("imageGrabberRate") * 1000);
         } else {
@@ -66,8 +61,6 @@ class ReolinkCamera extends IPSModule {
 
         // call function
         $this->refreshCommonVariables();
-        // refresh recordings
-        $this->UpdateRecordings();
     }
 
     // when destroyed disconnect from camera
@@ -81,9 +74,6 @@ class ReolinkCamera extends IPSModule {
         }
     }
 
-    /**
-     * @throws ErrorException
-     */
     public function RequestAction($Ident, $Value) {
         // decide action
         switch ($Ident) {
@@ -109,12 +99,6 @@ class ReolinkCamera extends IPSModule {
 
             case "hour_format":
                 $this->SetValue($Ident, $Value);
-                break;
-
-            case "recordings":
-                // check if new tab should open
-                if (!$this->ReadPropertyBoolean("openRecording")) return;
-                echo $this->GetRecordingDownloadLink($Value);
                 break;
         }
         // update image
@@ -532,24 +516,6 @@ class ReolinkCamera extends IPSModule {
     }
 
     /**
-     * Get Device Recording download link
-     * @param string $recordingName Name of the Recording
-     * @return string               Link to the Recording Download
-     * @throws ErrorException       Token refresh Error
-     */
-    public function GetRecordingDownloadLink(string $recordingName): string {
-        // formatting the link
-        return "http://".
-            $this->ReadPropertyString("ip")
-            ."/cgi-bin/api.cgi?cmd=Download&source=".
-            $recordingName
-            ."&output".
-            $recordingName
-            ."&token".
-            $this->getToken();
-    }
-
-    /**
      * Get Device Motion Detection State
      * @return bool|null
      * @throws Exception
@@ -615,48 +581,6 @@ class ReolinkCamera extends IPSModule {
         // not active then disable instance
         IPS_SetDisabled($mediaID, true);
         IPS_SetMediaFile($mediaID, " ", false);
-    }
-
-    /**
-     * Fills the Variable Association with all Recordings
-     * @return void
-     */
-    public function UpdateRecordings(): void {
-        // get all recordings
-        $recordings = $this->GetRecordings(0, "main",
-            date("Y", time()), date("m", time()), 1, 0, 0, 0,
-            date("Y", time()), date("m", time()), date("d", time()), 23, 59, 59);
-
-        // check if response is valid
-        if (!isset($recordings["File"])) return;
-
-        // delete old profile
-        if (IPS_VariableProfileExists('REO_RECORDINGS_'.$this->InstanceID)) IPS_DeleteVariableProfile('REO_RECORDINGS_'.$this->InstanceID);
-
-        // construct new profile
-        if (!IPS_VariableProfileExists('REO_RECORDINGS_'.$this->InstanceID)) {
-            IPS_CreateVariableProfile('REO_RECORDINGS_'.$this->InstanceID, 3);
-            IPS_SetVariableProfileIcon('REO_RECORDINGS_'.$this->InstanceID, "Menu");
-        }
-
-        // build up association
-        $maxAssociation = 127;
-        foreach (array_reverse($recordings["File"]) as $record) {
-            // check if maximum associations is reached
-            if (!$maxAssociation) break;
-            // get important information
-            $recName = $record["name"];
-            $fullMinute = "";
-            if ($record["StartTime"]["min"] < 10) $fullMinute = "0";
-            $recDate = $record["StartTime"]["hour"].":".$fullMinute.$record["StartTime"]["min"]." Uhr am ".
-                $record["StartTime"]["day"].".".$record["StartTime"]["mon"].".".$record["StartTime"]["year"];
-
-            IPS_SetVariableProfileAssociation('REO_RECORDINGS_'.$this->InstanceID, $recName, $recDate, "", 0x828282);
-            $maxAssociation--;
-        }
-        // set last entry
-        $this->SetValue("recordings", array_reverse($recordings["File"])[0]["name"]);
-        $this->EnableAction("recordings");
     }
 
     //============================================================================================== SESSION HANDLER
@@ -804,16 +728,15 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterVariableString("version", "Version", "", 1);
 
         $this->RegisterVariableBoolean("motion", "Motion", "Motion", 4);
-        $this->RegisterVariableString("recordings", "Recordings", "REO_RECORDINGS_".$this->InstanceID, 5);
-        $this->RegisterVariableBoolean("wifi", "Wifi", "Switch", 6);
-        $this->RegisterVariableInteger("bright", "Bright", "Intensity.255", 7);
-        $this->RegisterVariableInteger("contrast", "Contrast", "Intensity.255", 8);
-        $this->RegisterVariableInteger("hue", "Hue", "Intensity.255", 9);
-        $this->RegisterVariableInteger("saturation", "Saturation", "Intensity.255", 10);
-        $this->RegisterVariableInteger("sharpen", "Sharpen", "Intensity.255", 11);
+        $this->RegisterVariableBoolean("wifi", "Wifi", "Switch", 5);
+        $this->RegisterVariableInteger("bright", "Bright", "Intensity.255", 6);
+        $this->RegisterVariableInteger("contrast", "Contrast", "Intensity.255", 7);
+        $this->RegisterVariableInteger("hue", "Hue", "Intensity.255", 8);
+        $this->RegisterVariableInteger("saturation", "Saturation", "Intensity.255", 9);
+        $this->RegisterVariableInteger("sharpen", "Sharpen", "Intensity.255", 9);
 
-        $this->RegisterVariableString("time_format", "TIME_FORMAT", "REO_TIME_FORMAT", 12);
-        $this->RegisterVariableInteger("hour_format", "HOUR_FORMAT", "REO_HOUR_FORMAT", 13);
+        $this->RegisterVariableString("time_format", "TIME_FORMAT", "REO_TIME_FORMAT", 10);
+        $this->RegisterVariableInteger("hour_format", "HOUR_FORMAT", "REO_HOUR_FORMAT", 11);
 
         $this->RegisterVariableInteger("hdd_capacity", "HDD_CAPACITY", "REO_CAPACITY", 30);
         $this->RegisterVariableInteger("hdd_used_capacity", "HDD_USED_CAPACITY", "REO_CAPACITY", 31);
@@ -822,7 +745,6 @@ class ReolinkCamera extends IPSModule {
         $this->RegisterVariableBoolean("hdd_mounted", "HDD_MOUNTED", "", 34);
 
         // action register
-        $this->EnableAction("recordings");
         $this->EnableAction("bright");
         $this->EnableAction("contrast");
         $this->EnableAction("hue");
@@ -874,20 +796,18 @@ class ReolinkCamera extends IPSModule {
             IPS_CreateVariableProfile('REO_CAPACITY', 1,);
             IPS_SetVariableProfileText("REO_CAPACITY", "", "Mb");
         }
+        // Generate Variable Profiles
         if (!IPS_VariableProfileExists('REO_TIME_FORMAT')) {
             IPS_CreateVariableProfile('REO_TIME_FORMAT', 3);
             IPS_SetVariableProfileAssociation("REO_TIME_FORMAT", "MM/DD/YYYY", "MM/DD/YYYY", "", 0x828282);
             IPS_SetVariableProfileAssociation("REO_TIME_FORMAT", "YYYY/MM/DD", "YYYY/MM/DD", "", 0x828282);
             IPS_SetVariableProfileAssociation("REO_TIME_FORMAT", "DD/MM/YYYY", "DD/MM/YYYY", "", 0x828282);
         }
+        // Generate Variable Profiles
         if (!IPS_VariableProfileExists('REO_HOUR_FORMAT')) {
             IPS_CreateVariableProfile('REO_HOUR_FORMAT', 1);
             IPS_SetVariableProfileAssociation("REO_HOUR_FORMAT", 0, "24 hours", "", 0x828282);
             IPS_SetVariableProfileAssociation("REO_HOUR_FORMAT", 1, "12 hours", "", 0x828282);
-        }
-        if (!IPS_VariableProfileExists('REO_RECORDINGS_'.$this->InstanceID)) {
-            IPS_CreateVariableProfile('REO_RECORDINGS_'.$this->InstanceID, 3);
-            IPS_SetVariableProfileIcon('REO_RECORDINGS_'.$this->InstanceID, "Menu");
         }
     }
 
@@ -1022,13 +942,6 @@ class ReolinkCamera extends IPSModule {
                         "caption" => "Snapshot update rate",
                         "suffix" => "sec.",
                         "minimum" => 2
-                    ],
-                    [
-                        "type" => "NumberSpinner",
-                        "name" => "recordingsRate",
-                        "caption" => "Recordings update rate",
-                        "suffix" => "min.",
-                        "minimum" => 6
                     ]
                 ]
             ],
@@ -1049,11 +962,6 @@ class ReolinkCamera extends IPSModule {
                         "type" => "CheckBox",
                         "name" => "saveImageOnMotion",
                         "caption" => "Save image on motion"
-                    ],
-                    [
-                        "type" => "CheckBox",
-                        "name" => "openRecording",
-                        "caption" => "Open Recording when Value changed"
                     ],
                     [
                         "type" => "CheckBox",
