@@ -10,7 +10,7 @@
  * @throws ErrorException
  */
 function cmd(string $ip, string $token, string $cmd, string $action, array $param, bool $raw) {
-    $header_array = array('Content-Type: application/json');
+    $header_array = array("Connection: keep-alive",'Content-Type: application/json');
     // build url
     $url = "http://" . $ip . "/api.cgi?cmd=" . $cmd . "&token=" . $token;
 
@@ -28,7 +28,6 @@ function cmd(string $ip, string $token, string $cmd, string $action, array $para
         CURLOPT_HTTPHEADER => $header_array,
         CURLOPT_POST => 1,
         CURLOPT_POSTFIELDS => $body,
-        CURLOPT_TIMEOUT => 10,
         CURLOPT_RETURNTRANSFER => true
     );
 
